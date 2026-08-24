@@ -21,7 +21,7 @@
             position: relative;
             box-shadow: 0 0 30px rgba(0,0,0,0.9);
             border: 3px solid #222;
-            border-radius: 6px;
+            border-radius: 0; /* Simplistic UI */
         }
         canvas {
             background: #151515;
@@ -40,6 +40,7 @@
             justify-content: center;
             text-align: center;
             z-index: 10;
+            border-radius: 0;
         }
         h1 {
             color: #ffffff;
@@ -66,7 +67,7 @@
             cursor: pointer;
             margin-top: 25px;
             transition: 0.2s;
-            border-radius: 4px;
+            border-radius: 0; /* Simplistic UI */
         }
         .btn:hover {
             background-color: #d1d1d1;
@@ -88,7 +89,7 @@
             width: 140px;
             height: 12px;
             background: rgba(255,255,255,0.2);
-            border-radius: 6px;
+            border-radius: 0; /* Simplistic UI */
             display: inline-block;
             vertical-align: middle;
             margin-left: 8px;
@@ -100,15 +101,28 @@
             background-color: #ffffff;
             transition: width 0.1s linear;
         }
+        #transition-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 450px;
+            background: black;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 8;
+        }
     </style>
 </head>
 <body>
 
 <div id="game-container">
+    <div id="transition-overlay"></div>
     <!-- Main Menu Screen -->
     <div id="menu-screen" class="screen">
         <h1>SOGGY CAT IN THE ROOMS</h1>
-        <p>help sog cat navigate through rooms Use wasd to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress</p>
+        <p>help sog cat navigate through rooms. Use wasd to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress</p>
         <button class="btn" onclick="startGame()">PLAY GAME</button>
     </div>
 
@@ -132,19 +146,15 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // Load Soggy Cat Sprite from GitHub raw URL
     const soggyImg = new Image();
     soggyImg.crossOrigin = "anonymous";
     soggyImg.src = "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy-removebg-preview.png";
 
-    // Door open sound effect
     const doorSound = new Audio("https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/door_open.ogg");
     doorSound.volume = 0.6;
 
-    // Game States
-    let gameState = "MENU"; // MENU, PLAYING, GAMEOVER
+    let gameState = "MENU"; 
 
-    // Player Object with Jump Physics
     let player = {
         x: 100,
         y: 280,
@@ -161,7 +171,6 @@
         isHiding: false
     };
 
-    // Game World Variables (Infinite Rooms)
     let currentRoomIndex = 1;
     let cameraX = 0;
     let roomLength = 700;  
@@ -169,8 +178,8 @@
     let roomsData = [];
     let hidingSpots = [];
     let doors = [];
+    let activeEntities = [];
 
-    // Controls tracking
     let keys = {};
 
     window.addEventListener("keydown", (e) => {
@@ -193,23 +202,18 @@
         }
     });
 
-    // ==========================================
-    // CUSTOMIZABLE ENTITIES
-    // ==========================================
     let entitiesConfig = [
         {
             name: "angry sog",
             type: "rusher",
             speed: 12,
-            spawnChance: 0.003,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/angy.jpg", 
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Meow.wav"
         },
         {
             name: "evil sog",
             type: "rebounder",
-            speed: 8,
-            spawnChance: 0.001,
+            speed: 7,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy%20cat%20evil.webp",
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Artful's%20Copyright%20Music%20Box%20(UNOFFICIAL%20UPLOAD).mp3"
         }
@@ -225,10 +229,9 @@
         if (config.audioUrl) {
             config.sound = new Audio(config.audioUrl);
             config.sound.volume = 0.6;
+            config.sound.loop = (config.type === "rebounder"); // Loop ambience if rebounder
         }
     });
-
-    let activeEntity = null;
 
     function generateInitialRooms() {
         roomsData = [];
@@ -241,13 +244,19 @@
 
     function createRoomSegment(index) {
         let rx = (index - 1) * roomLength;
-        roomsData.push({ index: index, x: rx, isRed: index % 2 === 0 });
+        
+        // Varied room themes & props
+        let decorType = index % 3; 
+        roomsData.push({ 
+            index: index, 
+            x: rx, 
+            decor: decorType,
+            tint: index % 2 === 0 ? "red" : "blue" 
+        });
 
-        // Add 2 Lockers per room
         hidingSpots.push({ x: rx + 220, highlighted: false });
         hidingSpots.push({ x: rx + 480, highlighted: false });
 
-        // Add a locked door at the end of the room
         doors.push({ x: rx + roomLength - 40, roomIndex: index, highlighted: false });
     }
 
@@ -266,7 +275,15 @@
         player.isHiding = false;
         currentRoomIndex = 1;
         cameraX = 0;
-        activeEntity = null;
+        
+        // Stop all entity audio
+        entitiesConfig.forEach(c => {
+            if (c.sound) {
+                c.sound.pause();
+                c.sound.currentTime = 0;
+            }
+        });
+        activeEntities = [];
         generateInitialRooms();
     }
 
@@ -278,12 +295,17 @@
 
     function triggerGameOver(reason) {
         gameState = "GAMEOVER";
+        entitiesConfig.forEach(c => {
+            if (c.sound) {
+                c.sound.pause();
+                c.sound.currentTime = 0;
+            }
+        });
         document.getElementById("death-reason").innerText = reason;
         document.getElementById("gameover-screen").style.display = "flex";
     }
 
     function tryInteractAction() {
-        // Check lockers first
         for (let spot of hidingSpots) {
             if (Math.abs(player.x - spot.x) < 55 && player.isGrounded) {
                 player.isHiding = !player.isHiding;
@@ -295,30 +317,63 @@
             }
         }
 
-        // Check doors next (Strict room progression)
         for (let door of doors) {
             if (Math.abs(player.x - door.x) < 55) {
                 doorSound.currentTime = 0;
                 doorSound.play().catch(e => {});
                 
-                // Advance player through door into next room
-                player.x += 90;
-                currentRoomIndex = door.roomIndex + 1;
+                // Door Transition Effect
+                let overlay = document.getElementById("transition-overlay");
+                overlay.style.opacity = "1";
 
-                // Infinite generation ahead
-                if (currentRoomIndex + 2 > roomsData.length) {
-                    createRoomSegment(roomsData.length + 1);
-                }
+                setTimeout(() => {
+                    player.x += 90;
+                    currentRoomIndex = door.roomIndex + 1;
+                    document.getElementById("room-counter").innerText = `Room: A-${String(currentRoomIndex).padStart(3, '0')}`;
+
+                    if (currentRoomIndex + 2 > roomsData.length) {
+                        createRoomSegment(roomsData.length + 1);
+                    }
+
+                    // Chance to trigger entity spawn upon opening a door
+                    if (Math.random() < 0.65 && currentRoomIndex > 2) {
+                        spawnEntity();
+                    }
+
+                    overlay.style.opacity = "0";
+                }, 200);
+
                 return;
             }
         }
     }
 
-    // Main Update Loop
+    function spawnEntity() {
+        let template = entitiesConfig[Math.floor(Math.random() * entitiesConfig.length)];
+        
+        let newEntity = {
+            name: template.name,
+            type: template.type,
+            speed: template.speed,
+            image: template.loadedImage,
+            x: cameraX + canvas.width + 100,
+            state: "warning", 
+            timer: 70,
+            sound: template.sound,
+            bouncesLeft: template.type === "rebounder" ? 2 : 0
+        };
+
+        activeEntities.push(newEntity);
+
+        if (template.sound) {
+            template.sound.currentTime = 0;
+            template.sound.play().catch(err => {});
+        }
+    }
+
     function update() {
         if (gameState !== "PLAYING") return;
 
-        // --- STAMINA & MOVEMENT LOGIC ---
         let isRunning = keys['shift'] && player.stamina > 0 && (keys['a'] || keys['d']) && !player.isHiding;
         let currentSpeed = isRunning ? player.runSpeed : player.speed;
 
@@ -337,11 +392,9 @@
                 player.x += currentSpeed;
             }
 
-            // Apply Gravity & Jump Physics
             player.vy += player.gravity;
             player.y += player.vy;
 
-            // Ground collision
             if (player.y >= 280) {
                 player.y = 280;
                 player.vy = 0;
@@ -349,7 +402,6 @@
             }
         }
 
-        // --- STRICT ROOM BOUNDARY CHECK ---
         let currentDoor = doors.find(d => d.roomIndex === currentRoomIndex);
         if (currentDoor && !player.isHiding) {
             let maxAllowedX = currentDoor.x - 15;
@@ -360,11 +412,9 @@
 
         player.x = Math.max(25, player.x);
 
-        // Smooth Camera Follow Player
         let targetCameraX = player.x - canvas.width / 2;
         cameraX += (targetCameraX - cameraX) * 0.1;
 
-        // --- HIGHLIGHT PROXIMITY CHECKS ---
         for (let spot of hidingSpots) {
             spot.highlighted = Math.abs(player.x - spot.x) < 55 && player.isGrounded;
         }
@@ -372,71 +422,79 @@
             door.highlighted = Math.abs(player.x - door.x) < 55;
         }
 
-        // --- ENTITY SPAWN & AUDIO/AI LOGIC ---
-        if (!activeEntity && Math.random() < 0.004 && currentRoomIndex > 2) {
-            let template = entitiesConfig[Math.floor(Math.random() * entitiesConfig.length)];
-            
-            activeEntity = {
-                name: template.name,
-                type: template.type,
-                speed: template.speed,
-                image: template.loadedImage,
-                x: cameraX + canvas.width + 100,
-                state: "warning", 
-                timer: 90 
-            };
-
-            if (template.sound) {
-                template.sound.currentTime = 0;
-                template.sound.play().catch(err => {});
-            }
-        }
-
-        if (activeEntity) {
-            if (activeEntity.state === "warning") {
-                activeEntity.timer--;
-                if (activeEntity.timer <= 0) {
-                    activeEntity.state = "charging";
+        // Entity Logic Updates
+        for (let i = activeEntities.length - 1; i >= 0; i--) {
+            let ent = activeEntities[i];
+            if (ent.state === "warning") {
+                ent.timer--;
+                if (ent.timer <= 0) {
+                    ent.state = "charging";
                 }
-            } else if (activeEntity.state === "charging") {
-                activeEntity.x -= activeEntity.speed;
+            } else if (ent.state === "charging") {
+                ent.x -= ent.speed;
 
-                // Collision detection checks horizontal proximity (jumping won't save you)
-                if (Math.abs(player.x - activeEntity.x) < 45) {
+                if (Math.abs(player.x - ent.x) < 45) {
                     if (!player.isHiding) {
-                        triggerGameOver(`Killed by ${activeEntity.name}. You didn't hide in time!`);
+                        triggerGameOver(`Killed by ${ent.name}. You didn't hide in time!`);
                     }
                 }
 
-                if (activeEntity.x < cameraX - 100) {
-                    activeEntity = null;
+                // Handle Rebounder Logic
+                if (ent.type === "rebounder" && ent.x < cameraX - 150) {
+                    if (ent.bouncesLeft > 0) {
+                        ent.bouncesLeft--;
+                        ent.speed *= -1; // Rebound back across!
+                    } else {
+                        if (ent.sound) ent.sound.pause();
+                        activeEntities.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                if (ent.x < cameraX - 200 || ent.x > cameraX + canvas.width + 300) {
+                    if (ent.sound) ent.sound.pause();
+                    activeEntities.splice(i, 1);
                 }
             }
         }
     }
 
-    // Main Render Loop
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         ctx.save();
         ctx.translate(-cameraX, 0);
 
-        // --- DRAW INFINITE ROOMS WITH POLISHED DEPTH ---
+        // --- DRAW ROOMS WITH VARIETY ---
         for (let room of roomsData) {
             let rx = room.x;
 
             let wallGrad = ctx.createLinearGradient(rx, 50, rx, 330);
-            wallGrad.addColorStop(0, "#163820");
-            wallGrad.addColorStop(1, "#1e4d2b");
+            if (room.tint === "red") {
+                wallGrad.addColorStop(0, "#381616");
+                wallGrad.addColorStop(1, "#4d1e1e");
+            } else {
+                wallGrad.addColorStop(0, "#162838");
+                wallGrad.addColorStop(1, "#1e374d");
+            }
             ctx.fillStyle = wallGrad;
             ctx.fillRect(rx, 50, roomLength, 280);
             
+            // Wall Props Variety
+            if (room.decor === 1) {
+                ctx.fillStyle = "rgba(255,255,255,0.05)";
+                ctx.fillRect(rx + 150, 120, 80, 100);
+                ctx.fillRect(rx + 450, 120, 80, 100);
+            } else if (room.decor === 2) {
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(rx + 320, 50, 60, 280);
+            }
+
             ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
             ctx.fillRect(rx, 50, roomLength, 20);
 
             let floorGrad = ctx.createLinearGradient(rx, 330, rx, 400);
-            if (room.isRed) {
+            if (room.tint === "red") {
                 floorGrad.addColorStop(0, "#7a1a1a");
                 floorGrad.addColorStop(1, "#521111");
             } else {
@@ -448,8 +506,6 @@
             
             ctx.fillStyle = "#261708"; 
             ctx.fillRect(rx, 322, roomLength, 8);
-            ctx.fillStyle = "#150d04";
-            ctx.fillRect(rx, 329, roomLength, 2);
 
             ctx.strokeStyle = "#051208";
             ctx.lineWidth = 6;
@@ -460,33 +516,16 @@
             ctx.fillText(`A-${String(room.index).padStart(3, '0')}`, rx + 50, 95);
         }
 
-        // --- DRAW INSANELY GOOD DOORS ---
+        // --- DRAW DOORS ---
         for (let door of doors) {
             ctx.fillStyle = "#0c0602";
             ctx.fillRect(door.x - 24, 146, 48, 188);
 
             let doorGrad = ctx.createLinearGradient(door.x - 20, 150, door.x + 20, 330);
             doorGrad.addColorStop(0, "#593619");
-            doorGrad.addColorStop(0.5, "#42250f");
             doorGrad.addColorStop(1, "#2b1708");
             ctx.fillStyle = doorGrad;
             ctx.fillRect(door.x - 20, 150, 40, 180);
-
-            ctx.strokeStyle = "#1a0d04";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(door.x - 15, 165, 30, 70);
-            ctx.strokeRect(door.x - 15, 245, 30, 70);
-
-            ctx.fillStyle = "#ffd700";
-            ctx.beginPath();
-            ctx.arc(door.x + 10, 240, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = "#b39700";
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(door.x + 8, 238, 2, 2);
 
             if (door.highlighted) {
                 ctx.strokeStyle = "white";
@@ -501,35 +540,13 @@
             }
         }
 
-        // --- DRAW INSANELY GOOD LOCKERS ---
+        // --- DRAW LOCKERS ---
         for (let spot of hidingSpots) {
-            ctx.fillStyle = "#151c24";
-            ctx.fillRect(spot.x - 24, 208, 48, 124);
-
             let lockerGrad = ctx.createLinearGradient(spot.x - 22, 210, spot.x + 22, 330);
             lockerGrad.addColorStop(0, "#4a5d70");
-            lockerGrad.addColorStop(0.5, "#34424f");
             lockerGrad.addColorStop(1, "#222c36");
             ctx.fillStyle = lockerGrad;
             ctx.fillRect(spot.x - 22, 210, 44, 120);
-
-            ctx.strokeStyle = "#182129";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(spot.x, 210);
-            ctx.lineTo(spot.x, 330);
-            ctx.stroke();
-
-            ctx.fillStyle = "#182129";
-            for (let v = 0; v < 4; v++) {
-                ctx.fillRect(spot.x - 14, 226 + (v * 7), 8, 3);
-                ctx.fillRect(spot.x + 6, 226 + (v * 7), 8, 3);
-            }
-
-            ctx.fillStyle = "#d1d5db";
-            ctx.fillRect(spot.x - 6, 265, 3, 25);
-            ctx.fillStyle = "#9ca3af";
-            ctx.fillRect(spot.x - 6, 265, 1, 25);
 
             if (spot.highlighted && !player.isHiding) {
                 ctx.strokeStyle = "white";
@@ -544,7 +561,7 @@
             }
         }
 
-        // --- DRAW PLAYER (SOGGY CAT - NO OUTLINE) ---
+        // --- DRAW PLAYER ---
         if (!player.isHiding) {
             if (soggyImg.complete && soggyImg.naturalHeight !== 0) {
                 ctx.drawImage(soggyImg, player.x - player.width / 2, player.y, player.width, player.height);
@@ -554,20 +571,21 @@
             }
         }
 
-        // --- DRAW ACTIVE ENTITY ---
-        if (activeEntity && activeEntity.state === "charging") {
-            if (activeEntity.image && activeEntity.image.complete && activeEntity.image.naturalHeight !== 0) {
-                ctx.drawImage(activeEntity.image, activeEntity.x - 35, player.y - 15, 70, 70);
-            } else {
-                ctx.fillStyle = "#ff0055";
-                ctx.fillRect(activeEntity.x - 25, player.y, 50, 50);
+        // --- DRAW ACTIVE ENTITIES ---
+        for (let ent of activeEntities) {
+            if (ent.state === "charging") {
+                if (ent.image && ent.image.complete && ent.image.naturalHeight !== 0) {
+                    ctx.drawImage(ent.image, ent.x - 35, player.y - 15, 70, 70);
+                } else {
+                    ctx.fillStyle = "#ff0055";
+                    ctx.fillRect(ent.x - 25, player.y, 50, 50);
+                }
             }
         }
 
         ctx.restore();
     }
 
-    // Engine Loop
     function loop() {
         update();
         draw();
