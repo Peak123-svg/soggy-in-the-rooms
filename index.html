@@ -7,32 +7,37 @@
     <style>
         body {
             margin: 0;
-            background-color: #080808;
+            background-color: #050505;
             color: white;
             font-family: Arial, Helvetica, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            width: 100vw;
             height: 100vh;
             overflow: hidden;
         }
         #game-container {
             position: relative;
-            box-shadow: 0 0 30px rgba(0,0,0,0.9);
-            border: 3px solid #222;
-            border-radius: 0; /* Simplistic UI */
+            width: 100vw;
+            height: 100vh;
+            box-shadow: none;
+            border: none;
+            border-radius: 0;
         }
         canvas {
-            background: #151515;
+            background: #111;
             display: block;
+            width: 100%;
+            height: 100%;
         }
         .screen {
             position: absolute;
             top: 0;
             left: 0;
-            width: 800px;
-            height: 450px;
+            width: 100vw;
+            height: 100vh;
             background: rgba(5, 5, 5, 0.95);
             display: flex;
             flex-direction: column;
@@ -47,12 +52,12 @@
             font-weight: 700;
             margin-bottom: 15px;
             letter-spacing: 1px;
-            font-size: 28px;
+            font-size: 36px;
         }
         p {
             color: #aaaaaa;
-            max-width: 500px;
-            font-size: 14px;
+            max-width: 600px;
+            font-size: 16px;
             line-height: 1.5;
             font-weight: 400;
         }
@@ -60,39 +65,39 @@
             background-color: #ffffff;
             color: black;
             border: none;
-            padding: 12px 28px;
-            font-size: 15px;
+            padding: 14px 32px;
+            font-size: 16px;
             font-weight: 600;
             font-family: Arial, Helvetica, sans-serif;
             cursor: pointer;
             margin-top: 25px;
             transition: 0.2s;
-            border-radius: 0; /* Simplistic UI */
+            border-radius: 0;
         }
         .btn:hover {
             background-color: #d1d1d1;
         }
         #ui-layer {
             position: absolute;
-            top: 15px;
-            left: 20px;
-            right: 20px;
+            top: 20px;
+            left: 30px;
+            right: 30px;
             display: flex;
             justify-content: space-between;
             pointer-events: none;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 16px;
             letter-spacing: 0.5px;
             z-index: 5;
         }
         .stamina-container {
-            width: 140px;
-            height: 12px;
+            width: 180px;
+            height: 14px;
             background: rgba(255,255,255,0.2);
-            border-radius: 0; /* Simplistic UI */
+            border-radius: 0;
             display: inline-block;
             vertical-align: middle;
-            margin-left: 8px;
+            margin-left: 10px;
             overflow: hidden;
         }
         #stamina-fill {
@@ -105,8 +110,8 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 800px;
-            height: 450px;
+            width: 100vw;
+            height: 100vh;
             background: black;
             opacity: 0;
             pointer-events: none;
@@ -119,10 +124,11 @@
 
 <div id="game-container">
     <div id="transition-overlay"></div>
+    
     <!-- Main Menu Screen -->
     <div id="menu-screen" class="screen">
         <h1>SOGGY CAT IN THE ROOMS</h1>
-        <p>help sog cat navigate through rooms. Use wasd to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress</p>
+        <p>help sog cat navigate through rooms. Use wasd/arrows to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress.</p>
         <button class="btn" onclick="startGame()">PLAY GAME</button>
     </div>
 
@@ -139,46 +145,54 @@
         <div>Stamina <div class="stamina-container"><div id="stamina-fill"></div></div></div>
     </div>
 
-    <canvas id="gameCanvas" width="800" height="450"></canvas>
+    <canvas id="gameCanvas"></canvas>
 </div>
 
 <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
     const soggyImg = new Image();
     soggyImg.crossOrigin = "anonymous";
     soggyImg.src = "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy-removebg-preview.png";
 
-    const doorSound = new Audio("https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Door opening.mp3");
+    const doorSound = new Audio("https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/door_open.ogg");
     doorSound.volume = 0.6;
 
     let gameState = "MENU"; 
 
     let player = {
         x: 100,
-        y: 280,
-        width: 40,
-        height: 50,
-        speed: 3.5,
-        runSpeed: 6.5,
+        y: 0,
+        width: 45,
+        height: 55,
+        speed: 4,
+        runSpeed: 7.5,
         vy: 0,
         gravity: 0.6,
-        jumpPower: -10.5,
+        jumpPower: -11,
         isGrounded: true,
-        stamina: 100,
-        maxStamina: 100,
+        stamina: 101,
+        maxStamina: 101,
         isHiding: false
     };
 
     let currentRoomIndex = 1;
     let cameraX = 0;
-    let roomLength = 700;  
+    let roomLength = 850;  
     
     let roomsData = [];
     let hidingSpots = [];
     let doors = [];
     let activeEntities = [];
+    let entitySpawnCooldown = 0;
 
     let keys = {};
 
@@ -206,14 +220,14 @@
         {
             name: "angry sog",
             type: "rusher",
-            speed: 12,
+            speed: 13,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/angy.jpg", 
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Meow.wav"
         },
         {
             name: "evil sog",
             type: "rebounder",
-            speed: 7,
+            speed: 8,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy%20cat%20evil.webp",
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Artful's%20Copyright%20Music%20Box%20(UNOFFICIAL%20UPLOAD).mp3"
         }
@@ -229,7 +243,7 @@
         if (config.audioUrl) {
             config.sound = new Audio(config.audioUrl);
             config.sound.volume = 0.6;
-            config.sound.loop = (config.type === "rebounder"); // Loop ambience if rebounder
+            config.sound.loop = (config.type === "rebounder");
         }
     });
 
@@ -237,27 +251,18 @@
         roomsData = [];
         hidingSpots = [];
         doors = [];
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 6; i++) {
             createRoomSegment(i);
         }
     }
 
     function createRoomSegment(index) {
         let rx = (index - 1) * roomLength;
-        
-        // Varied room themes & props
-        let decorType = index % 3; 
-        roomsData.push({ 
-            index: index, 
-            x: rx, 
-            decor: decorType,
-            tint: index % 2 === 0 ? "red" : "blue" 
-        });
+        roomsData.push({ index: index, x: rx });
 
-        hidingSpots.push({ x: rx + 220, highlighted: false });
-        hidingSpots.push({ x: rx + 480, highlighted: false });
-
-        doors.push({ x: rx + roomLength - 40, roomIndex: index, highlighted: false });
+        hidingSpots.push({ x: rx + 260, highlighted: false });
+        hidingSpots.push({ x: rx + 580, highlighted: false });
+        doors.push({ x: rx + roomLength - 50, roomIndex: index, highlighted: false });
     }
 
     function startGame() {
@@ -268,15 +273,15 @@
 
     function resetGameVars() {
         player.x = 100;
-        player.y = 280;
+        player.y = canvas.height - 200;
         player.vy = 0;
         player.isGrounded = true;
         player.stamina = 100;
         player.isHiding = false;
         currentRoomIndex = 1;
         cameraX = 0;
+        entitySpawnCooldown = 0;
         
-        // Stop all entity audio
         entitiesConfig.forEach(c => {
             if (c.sound) {
                 c.sound.pause();
@@ -307,7 +312,7 @@
 
     function tryInteractAction() {
         for (let spot of hidingSpots) {
-            if (Math.abs(player.x - spot.x) < 55 && player.isGrounded) {
+            if (Math.abs(player.x - spot.x) < 60 && player.isGrounded) {
                 player.isHiding = !player.isHiding;
                 if (player.isHiding) {
                     player.x = spot.x; 
@@ -318,16 +323,15 @@
         }
 
         for (let door of doors) {
-            if (Math.abs(player.x - door.x) < 55) {
+            if (Math.abs(player.x - door.x) < 60) {
                 doorSound.currentTime = 0;
                 doorSound.play().catch(e => {});
                 
-                // Door Transition Effect
                 let overlay = document.getElementById("transition-overlay");
                 overlay.style.opacity = "1";
 
                 setTimeout(() => {
-                    player.x += 90;
+                    player.x += 100;
                     currentRoomIndex = door.roomIndex + 1;
                     document.getElementById("room-counter").innerText = `Room: A-${String(currentRoomIndex).padStart(3, '0')}`;
 
@@ -335,9 +339,13 @@
                         createRoomSegment(roomsData.length + 1);
                     }
 
-                    // Chance to trigger entity spawn upon opening a door
-                    if (Math.random() < 0.65 && currentRoomIndex > 2) {
+                    if (entitySpawnCooldown > 0) {
+                        entitySpawnCooldown--;
+                    }
+
+                    if (entitySpawnCooldown <= 0 && Math.random() < 0.55 && currentRoomIndex > 2) {
                         spawnEntity();
+                        entitySpawnCooldown = 3; 
                     }
 
                     overlay.style.opacity = "0";
@@ -374,6 +382,8 @@
     function update() {
         if (gameState !== "PLAYING") return;
 
+        let floorY = canvas.height - 150;
+
         let isRunning = keys['shift'] && player.stamina > 0 && (keys['a'] || keys['d']) && !player.isHiding;
         let currentSpeed = isRunning ? player.runSpeed : player.speed;
 
@@ -395,8 +405,8 @@
             player.vy += player.gravity;
             player.y += player.vy;
 
-            if (player.y >= 280) {
-                player.y = 280;
+            if (player.y >= floorY - player.height) {
+                player.y = floorY - player.height;
                 player.vy = 0;
                 player.isGrounded = true;
             }
@@ -404,25 +414,24 @@
 
         let currentDoor = doors.find(d => d.roomIndex === currentRoomIndex);
         if (currentDoor && !player.isHiding) {
-            let maxAllowedX = currentDoor.x - 15;
+            let maxAllowedX = currentDoor.x - 20;
             if (player.x > maxAllowedX) {
                 player.x = maxAllowedX;
             }
         }
 
-        player.x = Math.max(25, player.x);
+        player.x = Math.max(30, player.x);
 
         let targetCameraX = player.x - canvas.width / 2;
         cameraX += (targetCameraX - cameraX) * 0.1;
 
         for (let spot of hidingSpots) {
-            spot.highlighted = Math.abs(player.x - spot.x) < 55 && player.isGrounded;
+            spot.highlighted = Math.abs(player.x - spot.x) < 60 && player.isGrounded;
         }
         for (let door of doors) {
-            door.highlighted = Math.abs(player.x - door.x) < 55;
+            door.highlighted = Math.abs(player.x - door.x) < 60;
         }
 
-        // Entity Logic Updates
         for (let i = activeEntities.length - 1; i >= 0; i--) {
             let ent = activeEntities[i];
             if (ent.state === "warning") {
@@ -433,17 +442,16 @@
             } else if (ent.state === "charging") {
                 ent.x -= ent.speed;
 
-                if (Math.abs(player.x - ent.x) < 45) {
+                if (Math.abs(player.x - ent.x) < 50) {
                     if (!player.isHiding) {
                         triggerGameOver(`Killed by ${ent.name}. You didn't hide in time!`);
                     }
                 }
 
-                // Handle Rebounder Logic
-                if (ent.type === "rebounder" && ent.x < cameraX - 150) {
+                if (ent.type === "rebounder" && ent.x < cameraX - 200) {
                     if (ent.bouncesLeft > 0) {
                         ent.bouncesLeft--;
-                        ent.speed *= -1; // Rebound back across!
+                        ent.speed *= -1; 
                     } else {
                         if (ent.sound) ent.sound.pause();
                         activeEntities.splice(i, 1);
@@ -451,7 +459,7 @@
                     }
                 }
 
-                if (ent.x < cameraX - 200 || ent.x > cameraX + canvas.width + 300) {
+                if (ent.x < cameraX - 300 || ent.x > cameraX + canvas.width + 400) {
                     if (ent.sound) ent.sound.pause();
                     activeEntities.splice(i, 1);
                 }
@@ -465,99 +473,74 @@
         ctx.save();
         ctx.translate(-cameraX, 0);
 
-        // --- DRAW ROOMS WITH VARIETY ---
+        let floorY = canvas.height - 150;
+        let ceilingY = canvas.height - 450;
+        let wallHeight = floorY - ceilingY;
+
+        // --- DRAW SOLID GREY WALL ROOMS ---
         for (let room of roomsData) {
             let rx = room.x;
 
-            let wallGrad = ctx.createLinearGradient(rx, 50, rx, 330);
-            if (room.tint === "red") {
-                wallGrad.addColorStop(0, "#381616");
-                wallGrad.addColorStop(1, "#4d1e1e");
-            } else {
-                wallGrad.addColorStop(0, "#162838");
-                wallGrad.addColorStop(1, "#1e374d");
-            }
-            ctx.fillStyle = wallGrad;
-            ctx.fillRect(rx, 50, roomLength, 280);
+            // Single flat grey wall color for the whole room
+            ctx.fillStyle = "#222222";
+            ctx.fillRect(rx, ceilingY, roomLength, wallHeight);
+
+            // Floor
+            ctx.fillStyle = "#161616";
+            ctx.fillRect(rx, floorY, roomLength, 200);
             
-            // Wall Props Variety
-            if (room.decor === 1) {
-                ctx.fillStyle = "rgba(255,255,255,0.05)";
-                ctx.fillRect(rx + 150, 120, 80, 100);
-                ctx.fillRect(rx + 450, 120, 80, 100);
-            } else if (room.decor === 2) {
-                ctx.fillStyle = "rgba(0,0,0,0.2)";
-                ctx.fillRect(rx + 320, 50, 60, 280);
-            }
+            ctx.fillStyle = "#0c0c0c"; 
+            ctx.fillRect(rx, floorY - 8, roomLength, 8);
 
-            ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
-            ctx.fillRect(rx, 50, roomLength, 20);
-
-            let floorGrad = ctx.createLinearGradient(rx, 330, rx, 400);
-            if (room.tint === "red") {
-                floorGrad.addColorStop(0, "#7a1a1a");
-                floorGrad.addColorStop(1, "#521111");
-            } else {
-                floorGrad.addColorStop(0, "#1a357a");
-                floorGrad.addColorStop(1, "#112252");
-            }
-            ctx.fillStyle = floorGrad;
-            ctx.fillRect(rx, 330, roomLength, 70);
-            
-            ctx.fillStyle = "#261708"; 
-            ctx.fillRect(rx, 322, roomLength, 8);
-
-            ctx.strokeStyle = "#051208";
+            ctx.strokeStyle = "#050505";
             ctx.lineWidth = 6;
-            ctx.strokeRect(rx, 50, roomLength, 350);
-
-            ctx.fillStyle = "#88ff88";
-            ctx.font = "bold 14px Arial";
-            ctx.fillText(`A-${String(room.index).padStart(3, '0')}`, rx + 50, 95);
+            ctx.strokeRect(rx, ceilingY, roomLength, wallHeight + 150);
         }
 
         // --- DRAW DOORS ---
         for (let door of doors) {
+            let doorTop = floorY - 240;
             ctx.fillStyle = "#0c0602";
-            ctx.fillRect(door.x - 24, 146, 48, 188);
+            ctx.fillRect(door.x - 28, doorTop - 6, 56, 246);
 
-            let doorGrad = ctx.createLinearGradient(door.x - 20, 150, door.x + 20, 330);
+            let doorGrad = ctx.createLinearGradient(door.x - 24, doorTop, door.x + 24, floorY);
             doorGrad.addColorStop(0, "#593619");
             doorGrad.addColorStop(1, "#2b1708");
             ctx.fillStyle = doorGrad;
-            ctx.fillRect(door.x - 20, 150, 40, 180);
+            ctx.fillRect(door.x - 24, doorTop, 48, 240);
 
             if (door.highlighted) {
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 2;
-                ctx.strokeRect(door.x - 27, 142, 54, 196);
+                ctx.strokeRect(door.x - 32, doorTop - 10, 64, 248);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(door.x - 38, 108, 76, 26);
+                ctx.fillRect(door.x - 42, doorTop - 45, 84, 30);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 11px Arial";
-                ctx.fillText("OPEN", door.x - 20, 125);
+                ctx.font = "bold 13px Arial";
+                ctx.fillText("OPEN", door.x - 18, doorTop - 25);
             }
         }
 
         // --- DRAW LOCKERS ---
         for (let spot of hidingSpots) {
-            let lockerGrad = ctx.createLinearGradient(spot.x - 22, 210, spot.x + 22, 330);
+            let lockerTop = floorY - 160;
+            let lockerGrad = ctx.createLinearGradient(spot.x - 26, lockerTop, spot.x + 26, floorY);
             lockerGrad.addColorStop(0, "#4a5d70");
             lockerGrad.addColorStop(1, "#222c36");
             ctx.fillStyle = lockerGrad;
-            ctx.fillRect(spot.x - 22, 210, 44, 120);
+            ctx.fillRect(spot.x - 26, lockerTop, 52, 160);
 
             if (spot.highlighted && !player.isHiding) {
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 2;
-                ctx.strokeRect(spot.x - 27, 204, 54, 132);
+                ctx.strokeRect(spot.x - 30, lockerTop - 6, 60, 172);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(spot.x - 38, 172, 76, 26);
+                ctx.fillRect(spot.x - 40, lockerTop - 40, 80, 30);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 11px Arial";
-                ctx.fillText("HIDE", spot.x - 18, 189);
+                ctx.font = "bold 13px Arial";
+                ctx.fillText("HIDE", spot.x - 16, lockerTop - 20);
             }
         }
 
@@ -575,10 +558,10 @@
         for (let ent of activeEntities) {
             if (ent.state === "charging") {
                 if (ent.image && ent.image.complete && ent.image.naturalHeight !== 0) {
-                    ctx.drawImage(ent.image, ent.x - 35, player.y - 15, 70, 70);
+                    ctx.drawImage(ent.image, ent.x - 40, floorY - 120, 80, 80);
                 } else {
                     ctx.fillStyle = "#ff0055";
-                    ctx.fillRect(ent.x - 25, player.y, 50, 50);
+                    ctx.fillRect(ent.x - 30, floorY - 100, 60, 60);
                 }
             }
         }
