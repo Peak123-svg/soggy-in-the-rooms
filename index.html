@@ -1,1 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soggy Cat In The Rooms</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        canvas {
+            background: #222;
+            display: block;
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 450px;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 10;
+        }
+        h1 {
+            color: #55ff55;
+            text-shadow: 2px 2px #000;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #ccc;
+            max-width: 500px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .btn {
+            background-color: #333;
+            color: white;
+            border: 2px solid #55ff55;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-family: 'Courier New', Courier, monospace;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+        .btn:hover {
+            background-color: #55ff55;
+            color: black;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 1px 1px #000;
+            z-index: 5;
+        }
+        .stamina-container {
+            width: 150px;
+            height: 15px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #fff;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+        #stamina-fill {
+            width: 100%;
+            height: 100%;
+            background-color: #ffff00;
+            transition: width 0.1s linear;
+        }
+    </style>
+</head>
+<body>
 
+<div id="game-container">
+    <!-- Main Menu Screen -->
+    <div id="menu-screen" class="screen">
+        <h1>SOGGY CAT IN THE ROOMS</h1>
+        <p>Guide Soggy through the infinite rooms. Use <b>A/D</b> to move, <b>Shift</b> to run, and approach lockers or tables to press <b>E</b> to hide when entities charge!</p>
+        <button class="btn" onclick="startGame()">PLAY GAME</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="screen" style="display: none;">
+        <h1 style="color: #ff4444;">YOU DIED</h1>
+        <p id="death-reason">An entity got you.</p>
+        <button class="btn" onclick="resetGame()">TRY AGAIN</button>
+    </div>
+
+    <!-- HUD Elements -->
+    <div id="ui-layer">
+        <div id="room-counter">Room: A-001</div>
+        <div>Stamina: <div class="stamina-container"><div id="stamina-fill"></div></div></div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Load Soggy Cat Sprite from GitHub raw URL
+    const soggyImg = new Image();
+    soggyImg.crossOrigin = "anonymous";
+    soggyImg.src = "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy-removebg-preview.png";
+
+    // Game States
+    let gameState = "MENU"; // MENU, PLAYING, GAMEOVER
+
+    // Player Object
+    let player = {
+        x: 100,
+        y: 300,
+        width: 40,
+        height: 50,
+        speed: 3,
+        runSpeed: 6,
+        stamina: 100,
+        maxStamina: 100,
+        isHiding: false
+    };
+
+    // Game World Variables
+    let currentRoomIndex = 1;
+    let cameraX = 0;
+    let worldWidth = 3000; 
+    let roomLength = 600;  
+
+    // Controls tracking
+    let keys = {};
+
+    window.addEventListener("keydown", (e) => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.key.toLowerCase() === 'e' && gameState === "PLAYING") {
+            tryInteractHidingSpot();
+        }
+    });
+    window.addEventListener("keyup", (e) => {
+        keys[e.key.toLowerCase()] = false;
+    });
+
+    // ==========================================
+    // CUSTOMIZABLE ENTITIES (IMAGES + AUDIOS)
+    // ==========================================
+    let entitiesConfig = [
+        {
+            name: "Rusher-A",
+            type: "rusher",
+            speed: 12,
+            spawnChance: 0.003,
+            // REPLACE THESE URLS WITH YOUR GITHUB RAW IMAGE AND AUDIO FILES
+            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rusher.png", 
+            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rusher_audio.mp3"
+        },
+        {
+            name: "Rebounder-B",
+            type: "rebounder",
+            speed: 8,
+            spawnChance: 0.001,
+            // REPLACE THESE URLS WITH YOUR GITHUB RAW IMAGE AND AUDIO FILES
+            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rebounder.png",
+            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rebounder_audio.mp3"
+        }
+    ];
+
+    // Preload Entity Images and Audio Objects automatically
+    entitiesConfig.forEach(config => {
+        if (config.imageUrl) {
+            let img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = config.imageUrl;
+            config.loadedImage = img;
+        }
+        if (config.audioUrl) {
+            config.sound = new Audio(config.audioUrl);
+            config.sound.volume = 0.6;
+        }
+    });
+
+    let activeEntity = null;
+
+    // Hiding Spots & Room Decor (Lockers / Tables)
+    let hidingSpots = [
+        { x: 500, type: "locker", highlighted: false },
+        { x: 1100, type: "table", highlighted: false },
+        { x: 1700, type: "locker", highlighted: false },
+        { x: 2300, type: "table", highlighted: false }
+    ];
+
+    function startGame() {
+        document.getElementById("menu-screen").style.display = "none";
+        gameState = "PLAYING";
+        resetGameVars();
+    }
+
+    function resetGameVars() {
+        player.x = 100;
+        player.stamina = 100;
+        player.isHiding = false;
+        currentRoomIndex = 1;
+        cameraX = 0;
+        activeEntity = null;
+    }
+
+    function resetGame() {
+        document.getElementById("gameover-screen").style.display = "none";
+        gameState = "PLAYING";
+        resetGameVars();
+    }
+
+    function triggerGameOver(reason) {
+        gameState = "GAMEOVER";
+        document.getElementById("death-reason").innerText = reason;
+        document.getElementById("gameover-screen").style.display = "flex";
+    }
+
+    function tryInteractHidingSpot() {
+        for (let spot of hidingSpots) {
+            if (Math.abs(player.x - spot.x) < 50) {
+                player.isHiding = !player.isHiding;
+                if (player.isHiding) {
+                    player.x = spot.x; 
+                }
+                break;
+            }
+        }
+    }
+
+    // Main Update Loop
+    function update() {
+        if (gameState !== "PLAYING") return;
+
+        // --- STAMINA & MOVEMENT LOGIC ---
+        let isRunning = keys['shift'] && player.stamina > 0 && (keys['a'] || keys['d']) && !player.isHiding;
+        let currentSpeed = isRunning ? player.runSpeed : player.speed;
+
+        if (isRunning) {
+            player.stamina = Math.max(0, player.stamina - 0.8);
+        } else if (!keys['shift'] && player.stamina < player.maxStamina) {
+            player.stamina = Math.min(player.maxStamina, player.stamina + 0.4);
+        }
+        document.getElementById("stamina-fill").style.width = player.stamina + "%";
+
+        if (!player.isHiding) {
+            if (keys['a'] || keys['arrowleft']) {
+                player.x -= currentSpeed;
+            }
+            if (keys['d'] || keys['arrowright']) {
+                player.x += currentSpeed;
+            }
+        }
+
+        player.x = Math.max(20, Math.min(worldWidth - 40, player.x));
+
+        currentRoomIndex = Math.floor(player.x / roomLength) + 1;
+        document.getElementById("room-counter").innerText = `Room: A-${String(currentRoomIndex).padStart(3, '0')}`;
+
+        let targetCameraX = player.x - canvas.width / 2;
+        cameraX += (targetCameraX - cameraX) * 0.1;
+        cameraX = Math.max(0, Math.min(worldWidth - canvas.width, cameraX));
+
+        for (let spot of hidingSpots) {
+            spot.highlighted = Math.abs(player.x - spot.x) < 50;
+        }
+
+        // --- ENTITY SPAWN & AUDIO/AI LOGIC ---
+        if (!activeEntity && Math.random() < 0.004 && currentRoomIndex > 2) {
+            let template = entitiesConfig[Math.floor(Math.random() * entitiesConfig.length)];
+            
+            activeEntity = {
+                name: template.name,
+                type: template.type,
+                speed: template.speed,
+                image: template.loadedImage,
+                x: cameraX + canvas.width + 100,
+                state: "warning", 
+                timer: 90 
+            };
+
+            // Play entity custom audio when warning begins
+            if (template.sound) {
+                template.sound.currentTime = 0;
+                template.sound.play().catch(err => console.log("Audio play blocked:", err));
+            }
+        }
+
+        if (activeEntity) {
+            if (activeEntity.state === "warning") {
+                activeEntity.timer--;
+                if (activeEntity.timer <= 0) {
+                    activeEntity.state = "charging";
+                }
+            } else if (activeEntity.state === "charging") {
+                activeEntity.x -= activeEntity.speed;
+
+                if (Math.abs(player.x - activeEntity.x) < 40) {
+                    if (!player.isHiding) {
+                        triggerGameOver(`Killed by ${activeEntity.name}. You didn't hide in time!`);
+                    }
+                }
+
+                if (activeEntity.x < cameraX - 100) {
+                    activeEntity = null;
+                }
+            }
+        }
+    }
+
+    // Main Render Loop
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(-cameraX, 0);
+
+        // --- DRAW ROOMS ---
+        for (let i = 0; i < worldWidth / roomLength; i++) {
+            let rx = i * roomLength;
+            let isRedFloor = i % 2 === 0;
+
+            // Walls (Green)
+            ctx.fillStyle = "#1e4d2b";
+            ctx.fillRect(rx, 50, roomLength, 280);
+
+            // Floors (Red or Blue)
+            ctx.fillStyle = isRedFloor ? "#661111" : "#112266";
+            ctx.fillRect(rx, 330, roomLength, 70);
+
+            ctx.strokeStyle = "#0a1f0e";
+            ctx.lineWidth = 6;
+            ctx.strokeRect(rx, 50, roomLength, 350);
+
+            ctx.fillStyle = "#aaffaa";
+            ctx.font = "16px 'Courier New'";
+            ctx.fillText(`A-${String(i+1).padStart(3, '0')}`, rx + 50, 90);
+        }
+
+        // --- DRAW HIDING SPOTS ---
+        for (let spot of hidingSpots) {
+            ctx.fillStyle = spot.type === "locker" ? "#445566" : "#885533";
+            ctx.fillRect(spot.x - 20, 270, 40, 90);
+
+            if (spot.highlighted && !player.isHiding) {
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(spot.x - 25, 265, 50, 100);
+
+                ctx.fillStyle = "white";
+                ctx.fillRect(spot.x - 35, 230, 70, 25);
+                ctx.fillStyle = "black";
+                ctx.font = "bold 12px 'Courier New'";
+                ctx.fillText("[E] HIDE", spot.x - 28, 247);
+            }
+        }
+
+        // --- DRAW PLAYER (SOGGY CAT) ---
+        if (!player.isHiding) {
+            if (soggyImg.complete && soggyImg.naturalHeight !== 0) {
+                ctx.drawImage(soggyImg, player.x - player.width / 2, player.y, player.width, player.height);
+            } else {
+                ctx.fillStyle = "#ffcc00";
+                ctx.fillRect(player.x - player.width / 2, player.y, player.width, player.height);
+            }
+        }
+
+        // --- DRAW ACTIVE ENTITY ---
+        if (activeEntity) {
+            if (activeEntity.state === "warning") {
+                ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+                ctx.fillRect(cameraX, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#ff3333";
+                ctx.font = "bold 20px 'Courier New'";
+                ctx.fillText(`⚠️ ${activeEntity.name} IS APPROACHING! FIND A LOCKER!`, cameraX + 120, 150);
+            } else if (activeEntity.state === "charging") {
+                if (activeEntity.image && activeEntity.image.complete && activeEntity.image.naturalHeight !== 0) {
+                    ctx.drawImage(activeEntity.image, activeEntity.x - 30, player.y - 10, 60, 60);
+                } else {
+                    ctx.fillStyle = "#ff0055";
+                    ctx.beginPath();
+                    ctx.arc(activeEntity.x, player.y + 25, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // Engine Loop
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+</script>
+
+</body>
+</html>
