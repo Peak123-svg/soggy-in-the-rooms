@@ -7,9 +7,9 @@
     <style>
         body {
             margin: 0;
-            background-color: #111;
+            background-color: #080808;
             color: white;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: Arial, Helvetica, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -19,10 +19,12 @@
         }
         #game-container {
             position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            border: 3px solid #222;
+            border-radius: 6px;
         }
         canvas {
-            background: #222;
+            background: #151515;
             display: block;
         }
         .screen {
@@ -31,7 +33,7 @@
             left: 0;
             width: 800px;
             height: 450px;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(5, 5, 5, 0.95);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -40,57 +42,62 @@
             z-index: 10;
         }
         h1 {
-            color: #55ff55;
-            text-shadow: 2px 2px #000;
-            margin-bottom: 10px;
+            color: #ffffff;
+            font-weight: 700;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+            font-size: 28px;
         }
         p {
-            color: #ccc;
+            color: #aaaaaa;
             max-width: 500px;
             font-size: 14px;
             line-height: 1.5;
+            font-weight: 400;
         }
         .btn {
-            background-color: #333;
-            color: white;
-            border: 2px solid #55ff55;
-            padding: 10px 20px;
-            font-size: 18px;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #ffffff;
+            color: black;
+            border: none;
+            padding: 12px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: Arial, Helvetica, sans-serif;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 25px;
             transition: 0.2s;
+            border-radius: 4px;
         }
         .btn:hover {
-            background-color: #55ff55;
-            color: black;
+            background-color: #d1d1d1;
         }
         #ui-layer {
             position: absolute;
             top: 15px;
-            left: 15px;
-            right: 15px;
+            left: 20px;
+            right: 20px;
             display: flex;
             justify-content: space-between;
             pointer-events: none;
-            font-weight: bold;
-            font-size: 16px;
-            text-shadow: 1px 1px #000;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.5px;
             z-index: 5;
         }
         .stamina-container {
-            width: 150px;
-            height: 15px;
-            background: rgba(0,0,0,0.5);
-            border: 2px solid #fff;
+            width: 140px;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 6px;
             display: inline-block;
             vertical-align: middle;
-            margin-left: 5px;
+            margin-left: 8px;
+            overflow: hidden;
         }
         #stamina-fill {
             width: 100%;
             height: 100%;
-            background-color: #ffff00;
+            background-color: #ffffff;
             transition: width 0.1s linear;
         }
     </style>
@@ -101,21 +108,21 @@
     <!-- Main Menu Screen -->
     <div id="menu-screen" class="screen">
         <h1>SOGGY CAT IN THE ROOMS</h1>
-        <p>Guide Soggy Cat through infinite rooms. Use WASD to move, <b>Shift</b> to run, press <b>E</b> at lockers/tables to hide, and press <b>E</b> at doors to enter!</p>
+        <p>help sog cat navigate through rooms Use wasd to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress</p>
         <button class="btn" onclick="startGame()">PLAY GAME</button>
     </div>
 
     <!-- Game Over Screen -->
     <div id="gameover-screen" class="screen" style="display: none;">
-        <h1 style="color: #ff4444;">YOU DIED</h1>
-        <p id="death-reason">An entity got you.</p>
+        <h1 style="color: #ff5555;">YOU DIED</h1>
+        <p id="death-reason">one of the evil sogs caughted u.</p>
         <button class="btn" onclick="resetGame()">TRY AGAIN</button>
     </div>
 
     <!-- HUD Elements -->
     <div id="ui-layer">
         <div id="room-counter">Room: A-001</div>
-        <div>Stamina: <div class="stamina-container"><div id="stamina-fill"></div></div></div>
+        <div>Stamina <div class="stamina-container"><div id="stamina-fill"></div></div></div>
     </div>
 
     <canvas id="gameCanvas" width="800" height="450"></canvas>
@@ -130,21 +137,25 @@
     soggyImg.crossOrigin = "anonymous";
     soggyImg.src = "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy-removebg-preview.png";
 
-    // Sound effect for opening doors
+    // Door open sound effect
     const doorSound = new Audio("https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/door_open.ogg");
-    doorSound.volume = 0.9;
+    doorSound.volume = 0.6;
 
     // Game States
-    let gameState = "MENU"; // MENU, PLAYING, GAMEOVER, TRANSITIONING
+    let gameState = "MENU"; // MENU, PLAYING, GAMEOVER
 
-    // Player Object
+    // Player Object with Jump Physics
     let player = {
         x: 100,
-        y: 300,
+        y: 280,
         width: 40,
         height: 50,
-        speed: 3,
-        runSpeed: 6,
+        speed: 3.5,
+        runSpeed: 6.5,
+        vy: 0,
+        gravity: 0.6,
+        jumpPower: -10.5,
+        isGrounded: true,
         stamina: 100,
         maxStamina: 100,
         isHiding: false
@@ -155,7 +166,6 @@
     let cameraX = 0;
     let roomLength = 700;  
     
-    // Dynamic lists for infinite generation
     let roomsData = [];
     let hidingSpots = [];
     let doors = [];
@@ -165,12 +175,22 @@
 
     window.addEventListener("keydown", (e) => {
         keys[e.key.toLowerCase()] = true;
+        if (e.key === ' ' && !keys['space_locked']) {
+            keys['space_locked'] = true;
+            if (gameState === "PLAYING" && player.isGrounded && !player.isHiding) {
+                player.vy = player.jumpPower;
+                player.isGrounded = false;
+            }
+        }
         if (e.key.toLowerCase() === 'e' && gameState === "PLAYING") {
             tryInteractAction();
         }
     });
     window.addEventListener("keyup", (e) => {
         keys[e.key.toLowerCase()] = false;
+        if (e.key === ' ') {
+            keys['space_locked'] = false;
+        }
     });
 
     // ==========================================
@@ -178,20 +198,20 @@
     // ==========================================
     let entitiesConfig = [
         {
-            name: "Rusher-A",
+            name: "angry sog",
             type: "rusher",
             speed: 12,
             spawnChance: 0.003,
-            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rusher.png", 
-            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rusher_audio.mp3"
+            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/angy.jpg", 
+            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Meow.wav"
         },
         {
-            name: "Rebounder-B",
+            name: "evil sog",
             type: "rebounder",
             speed: 8,
             spawnChance: 0.001,
-            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rebounder.png",
-            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rebounder_audio.mp3"
+            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy%20cat%20evil.webp",
+            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Artful's%20Copyright%20Music%20Box%20(UNOFFICIAL%20UPLOAD).mp3"
         }
     ];
 
@@ -210,7 +230,6 @@
 
     let activeEntity = null;
 
-    // Generate initial set of rooms ahead
     function generateInitialRooms() {
         roomsData = [];
         hidingSpots = [];
@@ -224,11 +243,11 @@
         let rx = (index - 1) * roomLength;
         roomsData.push({ index: index, x: rx, isRed: index % 2 === 0 });
 
-        // Add hiding spots (Lockers or Tables) inside the room
-        hidingSpots.push({ x: rx + 250, type: "locker", highlighted: false });
-        hidingSpots.push({ x: rx + 500, type: "table", highlighted: false });
+        // Add 2 Lockers per room
+        hidingSpots.push({ x: rx + 220, highlighted: false });
+        hidingSpots.push({ x: rx + 480, highlighted: false });
 
-        // Add a door at the end of the room
+        // Add a locked door at the end of the room
         doors.push({ x: rx + roomLength - 40, roomIndex: index, highlighted: false });
     }
 
@@ -240,6 +259,9 @@
 
     function resetGameVars() {
         player.x = 100;
+        player.y = 280;
+        player.vy = 0;
+        player.isGrounded = true;
         player.stamina = 100;
         player.isHiding = false;
         currentRoomIndex = 1;
@@ -261,28 +283,29 @@
     }
 
     function tryInteractAction() {
-        // Check lockers / tables first
+        // Check lockers first
         for (let spot of hidingSpots) {
-            if (Math.abs(player.x - spot.x) < 50) {
+            if (Math.abs(player.x - spot.x) < 55 && player.isGrounded) {
                 player.isHiding = !player.isHiding;
                 if (player.isHiding) {
                     player.x = spot.x; 
+                    player.vy = 0;
                 }
                 return;
             }
         }
 
-        // Check doors next
+        // Check doors next (Strict room progression)
         for (let door of doors) {
-            if (Math.abs(player.x - door.x) < 50) {
+            if (Math.abs(player.x - door.x) < 55) {
                 doorSound.currentTime = 0;
                 doorSound.play().catch(e => {});
                 
-                // Advance player forward through the door smoothly
-                player.x += 80;
+                // Advance player through door into next room
+                player.x += 90;
                 currentRoomIndex = door.roomIndex + 1;
 
-                // Infinite generation: if getting close to end, generate a new room ahead
+                // Infinite generation ahead
                 if (currentRoomIndex + 2 > roomsData.length) {
                     createRoomSegment(roomsData.length + 1);
                 }
@@ -313,13 +336,29 @@
             if (keys['d'] || keys['arrowright']) {
                 player.x += currentSpeed;
             }
+
+            // Apply Gravity & Jump Physics
+            player.vy += player.gravity;
+            player.y += player.vy;
+
+            // Ground collision
+            if (player.y >= 280) {
+                player.y = 280;
+                player.vy = 0;
+                player.isGrounded = true;
+            }
         }
 
-        player.x = Math.max(20, player.x);
+        // --- STRICT ROOM BOUNDARY CHECK ---
+        let currentDoor = doors.find(d => d.roomIndex === currentRoomIndex);
+        if (currentDoor && !player.isHiding) {
+            let maxAllowedX = currentDoor.x - 15;
+            if (player.x > maxAllowedX) {
+                player.x = maxAllowedX;
+            }
+        }
 
-        // Update Room Counter dynamically
-        currentRoomIndex = Math.floor(player.x / roomLength) + 1;
-        document.getElementById("room-counter").innerText = `Room: A-${String(currentRoomIndex).padStart(3, '0')}`;
+        player.x = Math.max(25, player.x);
 
         // Smooth Camera Follow Player
         let targetCameraX = player.x - canvas.width / 2;
@@ -327,10 +366,10 @@
 
         // --- HIGHLIGHT PROXIMITY CHECKS ---
         for (let spot of hidingSpots) {
-            spot.highlighted = Math.abs(player.x - spot.x) < 50;
+            spot.highlighted = Math.abs(player.x - spot.x) < 55 && player.isGrounded;
         }
         for (let door of doors) {
-            door.highlighted = Math.abs(player.x - door.x) < 50;
+            door.highlighted = Math.abs(player.x - door.x) < 55;
         }
 
         // --- ENTITY SPAWN & AUDIO/AI LOGIC ---
@@ -362,7 +401,8 @@
             } else if (activeEntity.state === "charging") {
                 activeEntity.x -= activeEntity.speed;
 
-                if (Math.abs(player.x - activeEntity.x) < 40) {
+                // Collision detection checks horizontal proximity (jumping won't save you)
+                if (Math.abs(player.x - activeEntity.x) < 45) {
                     if (!player.isHiding) {
                         triggerGameOver(`Killed by ${activeEntity.name}. You didn't hide in time!`);
                     }
@@ -382,155 +422,145 @@
         ctx.save();
         ctx.translate(-cameraX, 0);
 
-        // --- DRAW INFINITE ROOMS WITH DEPTH & OUTLINES ---
+        // --- DRAW INFINITE ROOMS WITH POLISHED DEPTH ---
         for (let room of roomsData) {
             let rx = room.x;
 
-            // Walls (Green with depth gradient & outline)
-            ctx.fillStyle = "#1e4d2b";
+            let wallGrad = ctx.createLinearGradient(rx, 50, rx, 330);
+            wallGrad.addColorStop(0, "#163820");
+            wallGrad.addColorStop(1, "#1e4d2b");
+            ctx.fillStyle = wallGrad;
             ctx.fillRect(rx, 50, roomLength, 280);
             
-            // Wall top shadow for depth
-            ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-            ctx.fillRect(rx, 50, roomLength, 15);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+            ctx.fillRect(rx, 50, roomLength, 20);
 
-            // Floors (Red or Blue with baseboard trim)
-            ctx.fillStyle = room.isRed ? "#661111" : "#112266";
+            let floorGrad = ctx.createLinearGradient(rx, 330, rx, 400);
+            if (room.isRed) {
+                floorGrad.addColorStop(0, "#7a1a1a");
+                floorGrad.addColorStop(1, "#521111");
+            } else {
+                floorGrad.addColorStop(0, "#1a357a");
+                floorGrad.addColorStop(1, "#112252");
+            }
+            ctx.fillStyle = floorGrad;
             ctx.fillRect(rx, 330, roomLength, 70);
             
-            ctx.fillStyle = "#2c1d0c"; // Wooden baseboard trim
-            ctx.fillRect(rx, 323, roomLength, 7);
+            ctx.fillStyle = "#261708"; 
+            ctx.fillRect(rx, 322, roomLength, 8);
+            ctx.fillStyle = "#150d04";
+            ctx.fillRect(rx, 329, roomLength, 2);
 
-            // Room Border Outlines
-            ctx.strokeStyle = "#081c0e";
+            ctx.strokeStyle = "#051208";
             ctx.lineWidth = 6;
             ctx.strokeRect(rx, 50, roomLength, 350);
 
-            // Room Text Marker on back wall
-            ctx.fillStyle = "#aaffaa";
-            ctx.font = "16px 'Courier New'";
-            ctx.fillText(`A-${String(room.index).padStart(3, '0')}`, rx + 50, 90);
+            ctx.fillStyle = "#88ff88";
+            ctx.font = "bold 14px Arial";
+            ctx.fillText(`A-${String(room.index).padStart(3, '0')}`, rx + 50, 95);
         }
 
-        // --- DRAW DOORS ---
+        // --- DRAW INSANELY GOOD DOORS ---
         for (let door of doors) {
-            // Door Frame & Panel
-            ctx.fillStyle = "#331a00";
-            ctx.fillRect(door.x - 20, 150, 40, 180);
-            ctx.strokeStyle = "#110900";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(door.x - 20, 150, 40, 180);
+            ctx.fillStyle = "#0c0602";
+            ctx.fillRect(door.x - 24, 146, 48, 188);
 
-            // Door Knob
+            let doorGrad = ctx.createLinearGradient(door.x - 20, 150, door.x + 20, 330);
+            doorGrad.addColorStop(0, "#593619");
+            doorGrad.addColorStop(0.5, "#42250f");
+            doorGrad.addColorStop(1, "#2b1708");
+            ctx.fillStyle = doorGrad;
+            ctx.fillRect(door.x - 20, 150, 40, 180);
+
+            ctx.strokeStyle = "#1a0d04";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(door.x - 15, 165, 30, 70);
+            ctx.strokeRect(door.x - 15, 245, 30, 70);
+
             ctx.fillStyle = "#ffd700";
             ctx.beginPath();
-            ctx.arc(door.x + 10, 240, 4, 0, Math.PI * 2);
+            ctx.arc(door.x + 10, 240, 5, 0, Math.PI * 2);
             ctx.fill();
+            ctx.strokeStyle = "#b39700";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            // Door Prompt
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(door.x + 8, 238, 2, 2);
+
             if (door.highlighted) {
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 2;
-                ctx.strokeRect(door.x - 25, 145, 50, 190);
+                ctx.strokeRect(door.x - 27, 142, 54, 196);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(door.x - 35, 110, 70, 25);
+                ctx.fillRect(door.x - 38, 108, 76, 26);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 12px 'Courier New'";
-                ctx.fillText("[E] DOOR", door.x - 30, 127);
+                ctx.font = "bold 11px Arial";
+                ctx.fillText("OPEN", door.x - 20, 125);
             }
         }
 
-        // --- DRAW REALISTIC LOCKERS & TABLES ---
+        // --- DRAW INSANELY GOOD LOCKERS ---
         for (let spot of hidingSpots) {
-            if (spot.type === "locker") {
-                // Realistic Metallic Locker
-                ctx.fillStyle = "#3a4a59";
-                ctx.fillRect(spot.x - 22, 210, 44, 120);
-                
-                // Locker Outline
-                ctx.strokeStyle = "#1a242c";
-                ctx.lineWidth = 3;
-                ctx.strokeRect(spot.x - 22, 210, 44, 120);
+            ctx.fillStyle = "#151c24";
+            ctx.fillRect(spot.x - 24, 208, 48, 124);
 
-                // Locker Door Seam & Vent slots
-                ctx.beginPath();
-                ctx.moveTo(spot.x, 210);
-                ctx.lineTo(spot.x, 330);
-                ctx.stroke();
+            let lockerGrad = ctx.createLinearGradient(spot.x - 22, 210, spot.x + 22, 330);
+            lockerGrad.addColorStop(0, "#4a5d70");
+            lockerGrad.addColorStop(0.5, "#34424f");
+            lockerGrad.addColorStop(1, "#222c36");
+            ctx.fillStyle = lockerGrad;
+            ctx.fillRect(spot.x - 22, 210, 44, 120);
 
-                ctx.fillStyle = "#1a242c";
-                ctx.fillRect(spot.x - 15, 225, 8, 4);
-                ctx.fillRect(spot.x - 15, 235, 8, 4);
+            ctx.strokeStyle = "#182129";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(spot.x, 210);
+            ctx.lineTo(spot.x, 330);
+            ctx.stroke();
 
-                // Handle
-                ctx.fillStyle = "#silver";
-                ctx.fillRect(spot.x - 5, 270, 3, 20);
-            } else {
-                // Table
-                ctx.fillStyle = "#734d26";
-                ctx.fillRect(spot.x - 25, 270, 50, 60);
-                ctx.strokeStyle = "#3b2613";
-                ctx.lineWidth = 3;
-                ctx.strokeRect(spot.x - 25, 270, 50, 60);
-                // Table legs
-                ctx.fillRect(spot.x - 20, 330, 6, 10);
-                ctx.fillRect(spot.x + 14, 330, 6, 10);
+            ctx.fillStyle = "#182129";
+            for (let v = 0; v < 4; v++) {
+                ctx.fillRect(spot.x - 14, 226 + (v * 7), 8, 3);
+                ctx.fillRect(spot.x + 6, 226 + (v * 7), 8, 3);
             }
 
-            // [E] HIDE Prompt
+            ctx.fillStyle = "#d1d5db";
+            ctx.fillRect(spot.x - 6, 265, 3, 25);
+            ctx.fillStyle = "#9ca3af";
+            ctx.fillRect(spot.x - 6, 265, 1, 25);
+
             if (spot.highlighted && !player.isHiding) {
                 ctx.strokeStyle = "white";
                 ctx.lineWidth = 2;
-                ctx.strokeRect(spot.x - 27, 205, 54, 135);
+                ctx.strokeRect(spot.x - 27, 204, 54, 132);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(spot.x - 35, 175, 70, 25);
+                ctx.fillRect(spot.x - 38, 172, 76, 26);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 12px 'Courier New'";
-                ctx.fillText("[E] HIDE", spot.x - 28, 192);
+                ctx.font = "bold 11px Arial";
+                ctx.fillText("HIDE", spot.x - 18, 189);
             }
         }
 
-        // --- DRAW PLAYER (SOGGY CAT WITH OUTLINE) ---
+        // --- DRAW PLAYER (SOGGY CAT - NO OUTLINE) ---
         if (!player.isHiding) {
             if (soggyImg.complete && soggyImg.naturalHeight !== 0) {
-                // Outer glow/outline effect box
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(player.x - player.width / 2 - 1, player.y - 1, player.width + 2, player.height + 2);
-
                 ctx.drawImage(soggyImg, player.x - player.width / 2, player.y, player.width, player.height);
             } else {
                 ctx.fillStyle = "#ffcc00";
                 ctx.fillRect(player.x - player.width / 2, player.y, player.width, player.height);
-                ctx.strokeStyle = "#000";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(player.x - player.width / 2, player.y, player.width, player.height);
             }
         }
 
         // --- DRAW ACTIVE ENTITY ---
-        if (activeEntity) {
-            if (activeEntity.state === "warning") {
-                ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
-                ctx.fillRect(cameraX, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = "#ff3333";
-                ctx.font = "bold 20px 'Courier New'";
-                ctx.fillText(`⚠️ ${activeEntity.name} IS APPROACHING! FIND A LOCKER!`, cameraX + 120, 150);
-            } else if (activeEntity.state === "charging") {
-                if (activeEntity.image && activeEntity.image.complete && activeEntity.image.naturalHeight !== 0) {
-                    ctx.drawImage(activeEntity.image, activeEntity.x - 30, player.y - 10, 60, 60);
-                } else {
-                    ctx.fillStyle = "#ff0055";
-                    ctx.beginPath();
-                    ctx.arc(activeEntity.x, player.y + 25, 25, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = "#000";
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                }
+        if (activeEntity && activeEntity.state === "charging") {
+            if (activeEntity.image && activeEntity.image.complete && activeEntity.image.naturalHeight !== 0) {
+                ctx.drawImage(activeEntity.image, activeEntity.x - 35, player.y - 15, 70, 70);
+            } else {
+                ctx.fillStyle = "#ff0055";
+                ctx.fillRect(activeEntity.x - 25, player.y, 50, 50);
             }
         }
 
