@@ -207,16 +207,16 @@
         <h1>ENTITY GUIDEBOOK</h1>
         <div class="book-content">
             <div class="entity-entry">
-                <h3>Angry Sog</h3>
-                <p><strong>Type:</strong> Rusher<br>A fast entity that charges down the hallway. Hide in either Grey or Blue lockers to survive.</p>
+                <h3>angry sog</h3>
+                <p><strong>Type:</strong> Rusher<br>a fast entity that charges down the hallway. hide in either grey or blue lockers to survive.</p>
             </div>
             <div class="entity-entry">
                 <h3>Evil Sog</h3>
-                <p><strong>Type:</strong> Rebounder<br>An entity playing a music box that bounces back and forth across the rooms multiple times. Hide until it fully passes!</p>
+                <p><strong>Type:</strong> Rebounder<br>an entity playing a annoying song that rebounds. hide until it fully passes!</p>
             </div>
             <div class="entity-entry">
                 <h3>Soggy Searcher</h3>
-                <p><strong>Type:</strong> Locker Checker<br>A sneaky new entity that explicitly checks <strong>Grey Lockers</strong>! If it finds you in a grey locker, you will be caught. <strong>Use Blue Lockers</strong> to hide from this entity safely.</p>
+                <p><strong>Type:</strong> Locker Checker<br>aentity that explicitly checks <strong>brey lockers</strong>! if it finds you in a grey locker, you will be caught. <strong>use blue lockers</strong> to hide from this entity safely.</p>
             </div>
         </div>
         <button class="btn" onclick="closeBook()">BACK TO MENU</button>
@@ -377,7 +377,7 @@
         {
             name: "generic soggy locker checker",
             type: "searcher",
-            speed: 12,
+            speed: 5,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/FgKpVUIWQAEAw5f.jpeg", // re-use or fallback image asset
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rope_drop.ogg"
         }
@@ -741,7 +741,7 @@
                 ctx.fillRect(spot.x - 55, lockerTop - 55, 110, 38);
                 ctx.fillStyle = "black";
                 ctx.font = "bold 14px Arial";
-                let textLabel = spot.type === 'blue' ? "BLUE HIDE" : "HIDE";
+                let textLabel = spot.type === 'blue' ? "hide in blue locker" : "hide in locker";
                 ctx.fillText(textLabel, spot.x - 40, lockerTop - 30);
             }
         }
