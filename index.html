@@ -17,6 +17,8 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
         }
         #game-container {
             position: relative;
@@ -46,18 +48,20 @@
             text-align: center;
             z-index: 10;
             border-radius: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
         h1 {
             color: #ffffff;
             font-weight: 700;
             margin-bottom: 15px;
             letter-spacing: 1px;
-            font-size: 42px;
+            font-size: 38px;
         }
         p {
             color: #aaaaaa;
             max-width: 700px;
-            font-size: 18px;
+            font-size: 16px;
             line-height: 1.5;
             font-weight: 400;
         }
@@ -65,17 +69,24 @@
             background-color: #ffffff;
             color: black;
             border: none;
-            padding: 16px 36px;
+            padding: 14px 32px;
             font-size: 18px;
             font-weight: 600;
             font-family: Arial, Helvetica, sans-serif;
             cursor: pointer;
-            margin-top: 25px;
+            margin-top: 15px;
             transition: 0.2s;
             border-radius: 0;
         }
         .btn:hover {
             background-color: #d1d1d1;
+        }
+        .btn-row {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         #ui-layer {
             position: absolute;
@@ -118,6 +129,61 @@
             transition: opacity 0.3s ease;
             z-index: 8;
         }
+        /* Mobile Control Overlay */
+        #mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            display: none;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 6;
+            pointer-events: none;
+        }
+        .mob-group {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .mob-btn {
+            width: 75px;
+            height: 75px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid white;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            cursor: pointer;
+            user-select: none;
+        }
+        .mob-btn:active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        /* Book styles */
+        .book-content {
+            background: #1a1a1a;
+            border: 2px solid #444;
+            padding: 20px;
+            max-width: 600px;
+            max-height: 65vh;
+            overflow-y: auto;
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .entity-entry {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .entity-entry h3 {
+            margin: 0 0 5px 0;
+            color: #ffcc00;
+        }
     </style>
 </head>
 <body>
@@ -128,21 +194,59 @@
     <!-- Main Menu Screen -->
     <div id="menu-screen" class="screen">
         <h1>SOGGY CAT IN THE ROOMS</h1>
-        <p>help sog cat navigate through rooms. Use wasd/arrows to move, shift to run, space to jump, press e at lockers to hide, and press e at doors to progress.</p>
-        <button class="btn" onclick="startGame()">PLAY GAME</button>
+        <p>Help sog cat navigate through rooms. Grey lockers hide from standard entities, Blue lockers hide from the Searcher!</p>
+        <div class="btn-row">
+            <button class="btn" onclick="selectPlatform('pc')">PLAY (PC)</button>
+            <button class="btn" onclick="selectPlatform('mobile')">PLAY (MOBILE)</button>
+            <button class="btn" onclick="openBook()" style="background-color: #333; color: white;">ENTITY BOOK</button>
+        </div>
+    </div>
+
+    <!-- Entity Book Screen -->
+    <div id="book-screen" class="screen" style="display: none;">
+        <h1>ENTITY GUIDEBOOK</h1>
+        <div class="book-content">
+            <div class="entity-entry">
+                <h3>Angry Sog</h3>
+                <p><strong>Type:</strong> Rusher<br>A fast entity that charges down the hallway. Hide in either Grey or Blue lockers to survive.</p>
+            </div>
+            <div class="entity-entry">
+                <h3>Evil Sog</h3>
+                <p><strong>Type:</strong> Rebounder<br>An entity playing a music box that bounces back and forth across the rooms multiple times. Hide until it fully passes!</p>
+            </div>
+            <div class="entity-entry">
+                <h3>Soggy Searcher</h3>
+                <p><strong>Type:</strong> Locker Checker<br>A sneaky new entity that explicitly checks <strong>Grey Lockers</strong>! If it finds you in a grey locker, you will be caught. <strong>Use Blue Lockers</strong> to hide from this entity safely.</p>
+            </div>
+        </div>
+        <button class="btn" onclick="closeBook()">BACK TO MENU</button>
     </div>
 
     <!-- Game Over Screen -->
     <div id="gameover-screen" class="screen" style="display: none;">
         <h1 style="color: #ff5555;">YOU DIED</h1>
-        <p id="death-reason">one of the evil sogs caughted u.</p>
+        <p id="death-reason">One of the evil sogs caught u.</p>
         <button class="btn" onclick="resetGame()">TRY AGAIN</button>
+        <button class="btn" onclick="returnToMenu()" style="background-color: #333; color: white; margin-left: 10px;">MAIN MENU</button>
     </div>
 
     <!-- HUD Elements -->
     <div id="ui-layer">
         <div id="room-counter">Room: A-001</div>
         <div>Stamina <div class="stamina-container"><div id="stamina-fill"></div></div></div>
+    </div>
+
+    <!-- Mobile Controls Overlay -->
+    <div id="mobile-controls">
+        <div class="mob-group">
+            <div class="mob-btn" id="btn-left">◄</div>
+            <div class="mob-btn" id="btn-right">►</div>
+            <div class="mob-btn" id="btn-run" style="font-size: 14px;">RUN</div>
+        </div>
+        <div class="mob-group">
+            <div class="mob-btn" id="btn-interact" style="font-size: 14px;">USE</div>
+            <div class="mob-btn" id="btn-jump">▲</div>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -167,6 +271,7 @@
     doorSound.volume = 0.6;
 
     let gameState = "MENU"; 
+    let isMobileMode = false;
 
     let player = {
         x: 150,
@@ -181,7 +286,8 @@
         isGrounded: true,
         stamina: 100,
         maxStamina: 100,
-        isHiding: false
+        isHiding: false,
+        hidingType: null // 'grey' or 'blue'
     };
 
     let currentRoomIndex = 1;
@@ -196,6 +302,7 @@
 
     let keys = {};
 
+    // Keyboard Listeners
     window.addEventListener("keydown", (e) => {
         keys[e.key.toLowerCase()] = true;
         if (e.key === ' ' && !keys['space_locked']) {
@@ -216,6 +323,42 @@
         }
     });
 
+    // Mobile Control Button Listeners
+    function setupTouchButton(id, keyName) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        el.addEventListener("touchstart", (e) => { e.preventDefault(); keys[keyName] = true; });
+        el.addEventListener("touchend", (e) => { e.preventDefault(); keys[keyName] = false; });
+        el.addEventListener("mousedown", (e) => { keys[keyName] = true; });
+        el.addEventListener("mouseup", (e) => { keys[keyName] = false; });
+    }
+
+    setupTouchButton("btn-left", "a");
+    setupTouchButton("btn-right", "d");
+    setupTouchButton("btn-run", "shift");
+
+    document.getElementById("btn-jump").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (gameState === "PLAYING" && player.isGrounded && !player.isHiding) {
+            player.vy = player.jumpPower;
+            player.isGrounded = false;
+        }
+    });
+    document.getElementById("btn-jump").addEventListener("mousedown", (e) => {
+        if (gameState === "PLAYING" && player.isGrounded && !player.isHiding) {
+            player.vy = player.jumpPower;
+            player.isGrounded = false;
+        }
+    });
+
+    document.getElementById("btn-interact").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (gameState === "PLAYING") tryInteractAction();
+    });
+    document.getElementById("btn-interact").addEventListener("mousedown", (e) => {
+        if (gameState === "PLAYING") tryInteractAction();
+    });
+
     let entitiesConfig = [
         {
             name: "angry sog",
@@ -230,6 +373,13 @@
             speed: 10,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy%20cat%20evil.webp",
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Artful's%20Copyright%20Music%20Box%20(UNOFFICIAL%20UPLOAD).mp3"
+        },
+        {
+            name: "generic soggy locker checker",
+            type: "searcher",
+            speed: 12,
+            imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/FgKpVUIWQAEAw5f.jpeg", // re-use or fallback image asset
+            audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/rope_drop.ogg"
         }
     ];
 
@@ -247,6 +397,29 @@
         }
     });
 
+    function selectPlatform(mode) {
+        isMobileMode = (mode === 'mobile');
+        document.getElementById("mobile-controls").style.display = isMobileMode ? "flex" : "none";
+        startGame();
+    }
+
+    function openBook() {
+        document.getElementById("menu-screen").style.display = "none";
+        document.getElementById("book-screen").style.display = "flex";
+    }
+
+    function closeBook() {
+        document.getElementById("book-screen").style.display = "none";
+        document.getElementById("menu-screen").style.display = "flex";
+    }
+
+    function returnToMenu() {
+        document.getElementById("gameover-screen").style.display = "none";
+        document.getElementById("menu-screen").style.display = "flex";
+        document.getElementById("mobile-controls").style.display = "none";
+        gameState = "MENU";
+    }
+
     function generateInitialRooms() {
         roomsData = [];
         hidingSpots = [];
@@ -260,13 +433,15 @@
         let rx = (index - 1) * roomLength;
         roomsData.push({ index: index, x: rx });
 
-        hidingSpots.push({ x: rx + 350, highlighted: false });
-        hidingSpots.push({ x: rx + 750, highlighted: false });
+        // Alternate or assign locker types (Grey vs Blue)
+        hidingSpots.push({ x: rx + 350, type: 'grey', highlighted: false });
+        hidingSpots.push({ x: rx + 750, type: 'blue', highlighted: false });
         doors.push({ x: rx + roomLength - 60, roomIndex: index, highlighted: false });
     }
 
     function startGame() {
         document.getElementById("menu-screen").style.display = "none";
+        document.getElementById("book-screen").style.display = "none";
         gameState = "PLAYING";
         resetGameVars();
     }
@@ -278,6 +453,7 @@
         player.isGrounded = true;
         player.stamina = 100;
         player.isHiding = false;
+        player.hidingType = null;
         currentRoomIndex = 1;
         cameraX = 0;
         entitySpawnCooldown = 0;
@@ -308,6 +484,7 @@
         });
         document.getElementById("death-reason").innerText = reason;
         document.getElementById("gameover-screen").style.display = "flex";
+        document.getElementById("mobile-controls").style.display = "none";
     }
 
     function tryInteractAction() {
@@ -317,6 +494,9 @@
                 if (player.isHiding) {
                     player.x = spot.x; 
                     player.vy = 0;
+                    player.hidingType = spot.type;
+                } else {
+                    player.hidingType = null;
                 }
                 return;
             }
@@ -368,7 +548,8 @@
             state: "warning", 
             timer: 80,
             sound: template.sound,
-            bouncesLeft: template.type === "rebounder" ? 2 : 0
+            bouncesLeft: template.type === "rebounder" ? 2 : 0,
+            hasCheckedGrey: false
         };
 
         activeEntities.push(newEntity);
@@ -442,10 +623,24 @@
             } else if (ent.state === "charging") {
                 ent.x -= ent.speed;
 
-                // SPECIFICALLY DIE ONLY WHEN NOT HIDING
+                // Handle searcher entity mechanic: Checks grey lockers
+                if (ent.type === "searcher") {
+                    for (let spot of hidingSpots) {
+                        if (spot.type === 'grey' && Math.abs(ent.x - spot.x) < 30 && !ent.hasCheckedGrey) {
+                            ent.hasCheckedGrey = true;
+                            if (player.isHiding && player.hidingType === 'grey' && Math.abs(player.x - spot.x) < 10) {
+                                triggerGameOver("caught by the generic locker checker inside a grey locker!");
+                            }
+                        }
+                    }
+                }
+
+                // Standard collision check against player
                 if (Math.abs(player.x - ent.x) < 60) {
                     if (!player.isHiding) {
-                        triggerGameOver(`Killed by ${ent.name}. You weren't hiding!`);
+                        triggerGameOver(`whooped by ${ent.name}.`);
+                    } else if (ent.type === "searcher" && player.hidingType === 'grey') {
+                        triggerGameOver("son?");
                     }
                 }
 
@@ -482,11 +677,9 @@
         for (let room of roomsData) {
             let rx = room.x;
 
-            // Solid grey walls
             ctx.fillStyle = "#252525";
             ctx.fillRect(rx, ceilingY, roomLength, wallHeight);
 
-            // Solid Teal Floors
             ctx.fillStyle = "#14404c";
             ctx.fillRect(rx, floorY, roomLength, 250);
             
@@ -523,12 +716,19 @@
             }
         }
 
-        // --- DRAW LOCKERS ---
+        // --- DRAW LOCKERS (Grey & Blue) ---
         for (let spot of hidingSpots) {
             let lockerTop = floorY - 220;
             let lockerGrad = ctx.createLinearGradient(spot.x - 35, lockerTop, spot.x + 35, floorY);
-            lockerGrad.addColorStop(0, "#4a5d70");
-            lockerGrad.addColorStop(1, "#222c36");
+            
+            if (spot.type === 'blue') {
+                lockerGrad.addColorStop(0, "#2b6cb0");
+                lockerGrad.addColorStop(1, "#1a365d");
+            } else {
+                lockerGrad.addColorStop(0, "#4a5d70");
+                lockerGrad.addColorStop(1, "#222c36");
+            }
+
             ctx.fillStyle = lockerGrad;
             ctx.fillRect(spot.x - 35, lockerTop, 70, 220);
 
@@ -538,10 +738,11 @@
                 ctx.strokeRect(spot.x - 40, lockerTop - 8, 80, 236);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(spot.x - 50, lockerTop - 55, 100, 38);
+                ctx.fillRect(spot.x - 55, lockerTop - 55, 110, 38);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 16px Arial";
-                ctx.fillText("HIDE", spot.x - 20, lockerTop - 30);
+                ctx.font = "bold 14px Arial";
+                let textLabel = spot.type === 'blue' ? "BLUE HIDE" : "HIDE";
+                ctx.fillText(textLabel, spot.x - 40, lockerTop - 30);
             }
         }
 
