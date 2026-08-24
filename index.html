@@ -52,12 +52,12 @@
             font-weight: 700;
             margin-bottom: 15px;
             letter-spacing: 1px;
-            font-size: 36px;
+            font-size: 42px;
         }
         p {
             color: #aaaaaa;
-            max-width: 600px;
-            font-size: 16px;
+            max-width: 700px;
+            font-size: 18px;
             line-height: 1.5;
             font-weight: 400;
         }
@@ -65,8 +65,8 @@
             background-color: #ffffff;
             color: black;
             border: none;
-            padding: 14px 32px;
-            font-size: 16px;
+            padding: 16px 36px;
+            font-size: 18px;
             font-weight: 600;
             font-family: Arial, Helvetica, sans-serif;
             cursor: pointer;
@@ -79,20 +79,20 @@
         }
         #ui-layer {
             position: absolute;
-            top: 20px;
-            left: 30px;
-            right: 30px;
+            top: 25px;
+            left: 35px;
+            right: 35px;
             display: flex;
             justify-content: space-between;
             pointer-events: none;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 20px;
             letter-spacing: 0.5px;
             z-index: 5;
         }
         .stamina-container {
-            width: 180px;
-            height: 14px;
+            width: 220px;
+            height: 16px;
             background: rgba(255,255,255,0.2);
             border-radius: 0;
             display: inline-block;
@@ -169,24 +169,24 @@
     let gameState = "MENU"; 
 
     let player = {
-        x: 100,
+        x: 150,
         y: 0,
-        width: 45,
-        height: 55,
-        speed: 4,
-        runSpeed: 7.5,
+        width: 70,
+        height: 85,
+        speed: 5,
+        runSpeed: 9,
         vy: 0,
-        gravity: 0.6,
-        jumpPower: -11,
+        gravity: 0.7,
+        jumpPower: -13,
         isGrounded: true,
-        stamina: 101,
-        maxStamina: 101,
+        stamina: 100,
+        maxStamina: 100,
         isHiding: false
     };
 
     let currentRoomIndex = 1;
     let cameraX = 0;
-    let roomLength = 850;  
+    let roomLength = 1100;  
     
     let roomsData = [];
     let hidingSpots = [];
@@ -220,14 +220,14 @@
         {
             name: "angry sog",
             type: "rusher",
-            speed: 13,
+            speed: 15,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/angy.jpg", 
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Meow.wav"
         },
         {
             name: "evil sog",
             type: "rebounder",
-            speed: 8,
+            speed: 10,
             imageUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/soggy%20cat%20evil.webp",
             audioUrl: "https://raw.githubusercontent.com/Peak123-svg/soggy-in-the-rooms/main/Artful's%20Copyright%20Music%20Box%20(UNOFFICIAL%20UPLOAD).mp3"
         }
@@ -260,9 +260,9 @@
         let rx = (index - 1) * roomLength;
         roomsData.push({ index: index, x: rx });
 
-        hidingSpots.push({ x: rx + 260, highlighted: false });
-        hidingSpots.push({ x: rx + 580, highlighted: false });
-        doors.push({ x: rx + roomLength - 50, roomIndex: index, highlighted: false });
+        hidingSpots.push({ x: rx + 350, highlighted: false });
+        hidingSpots.push({ x: rx + 750, highlighted: false });
+        doors.push({ x: rx + roomLength - 60, roomIndex: index, highlighted: false });
     }
 
     function startGame() {
@@ -272,8 +272,8 @@
     }
 
     function resetGameVars() {
-        player.x = 100;
-        player.y = canvas.height - 200;
+        player.x = 150;
+        player.y = canvas.height - 250;
         player.vy = 0;
         player.isGrounded = true;
         player.stamina = 100;
@@ -312,7 +312,7 @@
 
     function tryInteractAction() {
         for (let spot of hidingSpots) {
-            if (Math.abs(player.x - spot.x) < 60 && player.isGrounded) {
+            if (Math.abs(player.x - spot.x) < 80 && player.isGrounded) {
                 player.isHiding = !player.isHiding;
                 if (player.isHiding) {
                     player.x = spot.x; 
@@ -323,7 +323,7 @@
         }
 
         for (let door of doors) {
-            if (Math.abs(player.x - door.x) < 60) {
+            if (Math.abs(player.x - door.x) < 80) {
                 doorSound.currentTime = 0;
                 doorSound.play().catch(e => {});
                 
@@ -331,7 +331,7 @@
                 overlay.style.opacity = "1";
 
                 setTimeout(() => {
-                    player.x += 100;
+                    player.x += 120;
                     currentRoomIndex = door.roomIndex + 1;
                     document.getElementById("room-counter").innerText = `Room: A-${String(currentRoomIndex).padStart(3, '0')}`;
 
@@ -343,7 +343,7 @@
                         entitySpawnCooldown--;
                     }
 
-                    if (entitySpawnCooldown <= 0 && Math.random() < 0.55 && currentRoomIndex > 2) {
+                    if (entitySpawnCooldown <= 0 && Math.random() < 0.6 && currentRoomIndex > 2) {
                         spawnEntity();
                         entitySpawnCooldown = 3; 
                     }
@@ -364,9 +364,9 @@
             type: template.type,
             speed: template.speed,
             image: template.loadedImage,
-            x: cameraX + canvas.width + 100,
+            x: cameraX + canvas.width + 150,
             state: "warning", 
-            timer: 70,
+            timer: 80,
             sound: template.sound,
             bouncesLeft: template.type === "rebounder" ? 2 : 0
         };
@@ -382,7 +382,7 @@
     function update() {
         if (gameState !== "PLAYING") return;
 
-        let floorY = canvas.height - 150;
+        let floorY = canvas.height - 200;
 
         let isRunning = keys['shift'] && player.stamina > 0 && (keys['a'] || keys['d']) && !player.isHiding;
         let currentSpeed = isRunning ? player.runSpeed : player.speed;
@@ -414,22 +414,22 @@
 
         let currentDoor = doors.find(d => d.roomIndex === currentRoomIndex);
         if (currentDoor && !player.isHiding) {
-            let maxAllowedX = currentDoor.x - 20;
+            let maxAllowedX = currentDoor.x - 30;
             if (player.x > maxAllowedX) {
                 player.x = maxAllowedX;
             }
         }
 
-        player.x = Math.max(30, player.x);
+        player.x = Math.max(40, player.x);
 
         let targetCameraX = player.x - canvas.width / 2;
         cameraX += (targetCameraX - cameraX) * 0.1;
 
         for (let spot of hidingSpots) {
-            spot.highlighted = Math.abs(player.x - spot.x) < 60 && player.isGrounded;
+            spot.highlighted = Math.abs(player.x - spot.x) < 80 && player.isGrounded;
         }
         for (let door of doors) {
-            door.highlighted = Math.abs(player.x - door.x) < 60;
+            door.highlighted = Math.abs(player.x - door.x) < 80;
         }
 
         for (let i = activeEntities.length - 1; i >= 0; i--) {
@@ -442,13 +442,14 @@
             } else if (ent.state === "charging") {
                 ent.x -= ent.speed;
 
-                if (Math.abs(player.x - ent.x) < 50) {
+                // SPECIFICALLY DIE ONLY WHEN NOT HIDING
+                if (Math.abs(player.x - ent.x) < 60) {
                     if (!player.isHiding) {
-                        triggerGameOver(`Killed by ${ent.name}. You didn't hide in time!`);
+                        triggerGameOver(`Killed by ${ent.name}. You weren't hiding!`);
                     }
                 }
 
-                if (ent.type === "rebounder" && ent.x < cameraX - 200) {
+                if (ent.type === "rebounder" && ent.x < cameraX - 250) {
                     if (ent.bouncesLeft > 0) {
                         ent.bouncesLeft--;
                         ent.speed *= -1; 
@@ -459,7 +460,7 @@
                     }
                 }
 
-                if (ent.x < cameraX - 300 || ent.x > cameraX + canvas.width + 400) {
+                if (ent.x < cameraX - 400 || ent.x > cameraX + canvas.width + 500) {
                     if (ent.sound) ent.sound.pause();
                     activeEntities.splice(i, 1);
                 }
@@ -473,74 +474,74 @@
         ctx.save();
         ctx.translate(-cameraX, 0);
 
-        let floorY = canvas.height - 150;
-        let ceilingY = canvas.height - 450;
+        let floorY = canvas.height - 200;
+        let ceilingY = canvas.height - 620;
         let wallHeight = floorY - ceilingY;
 
-        // --- DRAW SOLID GREY WALL ROOMS ---
+        // --- DRAW ROOMS ---
         for (let room of roomsData) {
             let rx = room.x;
 
-            // Single flat grey wall color for the whole room
-            ctx.fillStyle = "#222222";
+            // Solid grey walls
+            ctx.fillStyle = "#252525";
             ctx.fillRect(rx, ceilingY, roomLength, wallHeight);
 
-            // Floor
-            ctx.fillStyle = "#161616";
-            ctx.fillRect(rx, floorY, roomLength, 200);
+            // Solid Teal Floors
+            ctx.fillStyle = "#14404c";
+            ctx.fillRect(rx, floorY, roomLength, 250);
             
-            ctx.fillStyle = "#0c0c0c"; 
-            ctx.fillRect(rx, floorY - 8, roomLength, 8);
+            ctx.fillStyle = "#0c2b33"; 
+            ctx.fillRect(rx, floorY - 12, roomLength, 12);
 
-            ctx.strokeStyle = "#050505";
-            ctx.lineWidth = 6;
-            ctx.strokeRect(rx, ceilingY, roomLength, wallHeight + 150);
+            ctx.strokeStyle = "#080808";
+            ctx.lineWidth = 8;
+            ctx.strokeRect(rx, ceilingY, roomLength, wallHeight + 200);
         }
 
         // --- DRAW DOORS ---
         for (let door of doors) {
-            let doorTop = floorY - 240;
+            let doorTop = floorY - 320;
             ctx.fillStyle = "#0c0602";
-            ctx.fillRect(door.x - 28, doorTop - 6, 56, 246);
+            ctx.fillRect(door.x - 36, doorTop - 8, 72, 328);
 
-            let doorGrad = ctx.createLinearGradient(door.x - 24, doorTop, door.x + 24, floorY);
+            let doorGrad = ctx.createLinearGradient(door.x - 32, doorTop, door.x + 32, floorY);
             doorGrad.addColorStop(0, "#593619");
             doorGrad.addColorStop(1, "#2b1708");
             ctx.fillStyle = doorGrad;
-            ctx.fillRect(door.x - 24, doorTop, 48, 240);
+            ctx.fillRect(door.x - 32, doorTop, 64, 320);
 
             if (door.highlighted) {
                 ctx.strokeStyle = "white";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(door.x - 32, doorTop - 10, 64, 248);
+                ctx.lineWidth = 3;
+                ctx.strokeRect(door.x - 42, doorTop - 12, 84, 332);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(door.x - 42, doorTop - 45, 84, 30);
+                ctx.fillRect(door.x - 52, doorTop - 60, 104, 38);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 13px Arial";
-                ctx.fillText("OPEN", door.x - 18, doorTop - 25);
+                ctx.font = "bold 16px Arial";
+                ctx.fillText("OPEN", door.x - 22, doorTop - 35);
             }
         }
 
         // --- DRAW LOCKERS ---
         for (let spot of hidingSpots) {
-            let lockerTop = floorY - 160;
-            let lockerGrad = ctx.createLinearGradient(spot.x - 26, lockerTop, spot.x + 26, floorY);
+            let lockerTop = floorY - 220;
+            let lockerGrad = ctx.createLinearGradient(spot.x - 35, lockerTop, spot.x + 35, floorY);
             lockerGrad.addColorStop(0, "#4a5d70");
             lockerGrad.addColorStop(1, "#222c36");
             ctx.fillStyle = lockerGrad;
-            ctx.fillRect(spot.x - 26, lockerTop, 52, 160);
+            ctx.fillRect(spot.x - 35, lockerTop, 70, 220);
 
             if (spot.highlighted && !player.isHiding) {
                 ctx.strokeStyle = "white";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(spot.x - 30, lockerTop - 6, 60, 172);
+                ctx.lineWidth = 3;
+                ctx.strokeRect(spot.x - 40, lockerTop - 8, 80, 236);
 
                 ctx.fillStyle = "white";
-                ctx.fillRect(spot.x - 40, lockerTop - 40, 80, 30);
+                ctx.fillRect(spot.x - 50, lockerTop - 55, 100, 38);
                 ctx.fillStyle = "black";
-                ctx.font = "bold 13px Arial";
-                ctx.fillText("HIDE", spot.x - 16, lockerTop - 20);
+                ctx.font = "bold 16px Arial";
+                ctx.fillText("HIDE", spot.x - 20, lockerTop - 30);
             }
         }
 
@@ -558,10 +559,10 @@
         for (let ent of activeEntities) {
             if (ent.state === "charging") {
                 if (ent.image && ent.image.complete && ent.image.naturalHeight !== 0) {
-                    ctx.drawImage(ent.image, ent.x - 40, floorY - 120, 80, 80);
+                    ctx.drawImage(ent.image, ent.x - 60, floorY - 170, 120, 120);
                 } else {
                     ctx.fillStyle = "#ff0055";
-                    ctx.fillRect(ent.x - 30, floorY - 100, 60, 60);
+                    ctx.fillRect(ent.x - 45, floorY - 140, 90, 90);
                 }
             }
         }
